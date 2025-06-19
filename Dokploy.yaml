@@ -1,0 +1,20 @@
+app:
+  name: crawl4ai
+  port: 11235
+
+docker:
+  file: Dockerfile
+
+build:
+  context: .
+
+deploy:
+  platform: docker
+  image: crawl4ai-image
+  container: crawl4ai-container
+  restart_policy: always
+
+env:
+  - REDIS_HOST=localhost
+  - REDIS_PORT=6379
+  - PYTHON_ENV=production
