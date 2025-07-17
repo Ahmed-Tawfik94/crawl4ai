@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  crawl4ai:
+    image: unclecode/crawl4ai:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_TYPE: ${INSTALL_TYPE:-default}
+        ENABLE_GPU: ${ENABLE_GPU:-false}
+    ports:
+      - "11235:11235"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GEMINI_API_TOKEN=${GEMINI_API_TOKEN:-}
+      - PYTHON_ENV=production
+      - REDIS_HOST=localhost
+      - REDIS_PORT=6379
+    volumes:
+      - /dev/shm:/dev/shm
+      - ../files/crawl4ai-data:/app/data
+      - ../files/crawl4ai-cache:/home/appuser/.cache
+      - ../files/crawl4ai-logs:/app/logs
+      - ../files/redis-data:/var/lib/redis
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 1G
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    user: "appuser"
