@@ -61,6 +61,8 @@ RUN playwright install --with-deps chromium
 # Create necessary directories and set permissions
 RUN mkdir -p /home/appuser/.cache/ms-playwright \
     && chown -R appuser:appuser /home/appuser/.cache/ms-playwright \
+    && mkdir -p /home/appuser/.crawl4ai \
+    && chown -R appuser:appuser /home/appuser/.crawl4ai \
     && mkdir -p /app/logs \
     && chown -R appuser:appuser /app
 
