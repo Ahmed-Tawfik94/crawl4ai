@@ -3393,3 +3393,45 @@ def cosine_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """Calculate cosine distance (1 - similarity) between two vectors"""
     return 1 - cosine_similarity(vec1, vec2)
 
+
+def get_best_provider_from_env() -> tuple[str, str]:
+    """
+    Automatically detect the best LLM provider based on available API keys in environment variables.
+    
+    Returns:
+        tuple: (provider_name, api_key) or ("openai/gpt-4o", "OPENAI_API_KEY") as default
+    """
+    import os
+    
+    # List of providers in order of preference
+    providers = [
+        ("groq/", "GROQ_API_KEY"),
+        ("anthropic/", "ANTHROPIC_API_KEY"),
+        ("gemini/", "GEMINI_API_KEY"),
+        ("deepseek/", "DEEPSEEK_API_KEY"),
+        ("openai/", "OPENAI_API_KEY"),  # Keep as fallback
+    ]
+    
+    # Check for each provider's API key
+    for prefix, env_var in providers:
+        api_key = os.environ.get(env_var)
+        if api_key and api_key.strip() and not api_key.startswith("YOUR_"):
+            # Return the first available provider with a valid API key
+            # For Groq, we'll use a specific model
+            if prefix == "groq/":
+                return ("groq/llama3-70b-8192", env_var)
+            # For OpenAI, we'll use the default model
+            elif prefix == "openai/":
+                return ("openai/gpt-4o", env_var)
+            # For Anthropic, we'll use a specific model
+            elif prefix == "anthropic/":
+                return ("anthropic/claude-3-sonnet-20240229", env_var)
+            # For Gemini, we'll use a specific model
+            elif prefix == "gemini/":
+                return ("gemini/gemini-pro", env_var)
+            # For DeepSeek, we'll use a specific model
+            elif prefix == "deepseek/":
+                return ("deepseek/deepseek-chat", env_var)
+    
+    # Default fallback
+    return ("openai/gpt-4o", "OPENAI_API_KEY")

@@ -13,6 +13,7 @@ from .config import (
     CHUNK_TOKEN_THRESHOLD,
     OVERLAP_RATE,
     WORD_TOKEN_RATE,
+    PROVIDER_MODELS,
 )
 from .utils import *  # noqa: F403
 
@@ -546,9 +547,11 @@ class LLMExtractionStrategy(ExtractionStrategy):
         super().__init__( input_format=input_format, **kwargs)
         self.llm_config = llm_config
         if not self.llm_config:
+            # Auto-select provider based on available API keys
+            provider, api_key_env_var = get_best_provider_from_env()
             self.llm_config = create_llm_config(
-                provider=DEFAULT_PROVIDER,
-                api_token=os.environ.get(DEFAULT_PROVIDER_API_KEY),
+                provider=provider,
+                api_token=os.environ.get(api_key_env_var),
             )
         self.instruction = instruction
         self.extract_type = extraction_type

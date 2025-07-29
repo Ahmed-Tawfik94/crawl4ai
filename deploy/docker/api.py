@@ -25,7 +25,7 @@ from crawl4ai import (
     RateLimiter, 
     LLMConfig
 )
-from crawl4ai.utils import perform_completion_with_backoff
+from crawl4ai.utils import perform_completion_with_backoff, get_best_provider_from_env
 from crawl4ai.content_filter_strategy import (
     PruningContentFilter,
     BM25ContentFilter,
@@ -89,10 +89,18 @@ async def handle_llm_qa(
 
     Answer:"""
 
+        # Get provider and API key from config or auto-detect
+        if "llm" in config and "provider" in config["llm"]:
+            provider = config["llm"]["provider"]
+            api_key = os.environ.get(config["llm"].get("api_key_env", ""))
+        else:
+            provider, api_key_env_var = get_best_provider_from_env()
+            api_key = os.environ.get(api_key_env_var, "")
+
         response = perform_completion_with_backoff(
-            provider=config["llm"]["provider"],
+            provider=provider,
             prompt_with_variables=prompt,
-            api_token=os.environ.get(config["llm"].get("api_key_env", ""))
+            api_token=api_key
         )
 
         return response.choices[0].message.content
@@ -114,15 +122,21 @@ async def process_llm_extraction(
 ) -> None:
     """Process LLM extraction in background."""
     try:
-        # If config['llm'] has api_key then ignore the api_key_env
-        api_key = ""
-        if "api_key" in config["llm"]:
-            api_key = config["llm"]["api_key"]
+        # Get provider and API key from config or auto-detect
+        if "llm" in config and "provider" in config["llm"]:
+            provider = config["llm"]["provider"]
+            # If config['llm'] has api_key then ignore the api_key_env
+            if "api_key" in config["llm"]:
+                api_key = config["llm"]["api_key"]
+            else:
+                api_key = os.environ.get(config["llm"].get("api_key_env", None), "")
         else:
-            api_key = os.environ.get(config["llm"].get("api_key_env", None), "")
+            provider, api_key_env_var = get_best_provider_from_env()
+            api_key = os.environ.get(api_key_env_var, "")
+
         llm_strategy = LLMExtractionStrategy(
             llm_config=LLMConfig(
-                provider=config["llm"]["provider"],
+                provider=provider,
                 api_token=api_key
             ),
             instruction=instruction,
@@ -180,14 +194,27 @@ async def handle_markdown_request(
         if filter_type == FilterType.RAW:
             md_generator = DefaultMarkdownGenerator()
         else:
+            # Get provider and API key from config or auto-detect for LLM filter
+            if filter_type == FilterType.LLM:
+                if config and "llm" in config and "provider" in config["llm"]:
+                    provider = config["llm"]["provider"]
+                    api_key = os.environ.get(config["llm"].get("api_key_env", None), "")
+                else:
+                    provider, api_key_env_var = get_best_provider_from_env()
+                    api_key = os.environ.get(api_key_env_var, "")
+                
+                llm_config = LLMConfig(
+                    provider=provider,
+                    api_token=api_key,
+                )
+            else:
+                llm_config = None
+
             content_filter = {
                 FilterType.FIT: PruningContentFilter(),
                 FilterType.BM25: BM25ContentFilter(user_query=query or ""),
                 FilterType.LLM: LLMContentFilter(
-                    llm_config=LLMConfig(
-                        provider=config["llm"]["provider"],
-                        api_token=os.environ.get(config["llm"].get("api_key_env", None), ""),
-                    ),
+                    llm_config=llm_config,
                     instruction=query or "Extract main content"
                 )
             }[filter_type]
